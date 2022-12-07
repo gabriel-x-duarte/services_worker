@@ -31,17 +31,17 @@ abstract class ServicesWorker {
   static Future<ServicesResponse<R>> execute<R>(
     FutureOr<R> Function() task, {
     FutureOr<ServicesResponse<R>> Function(
-      Object err,
+      Object error,
       StackTrace stackTrace,
     )?
-        onErr,
+        onError,
   }) async {
     try {
       R data = await task();
 
       return ServicesResponse<R>.success(data);
     } catch (err, stackTrace) {
-      if (onErr == null) {
+      if (onError == null) {
         final ServicesError error = err is ServicesException
             ? err.toServicesError(
                 stackTrace,
@@ -55,7 +55,7 @@ abstract class ServicesWorker {
         return ServicesResponse<R>.error(error);
       }
 
-      return await onErr(
+      return await onError(
         err,
         stackTrace,
       );
@@ -94,17 +94,17 @@ abstract class ServicesWorker {
     FutureOr<R> Function(Q) task,
     Q payload, {
     FutureOr<ServicesResponse<R>> Function(
-      Object err,
+      Object error,
       StackTrace stackTrace,
     )?
-        onErr,
+        onError,
   }) async {
     try {
       final R data = await compute<Q, R>(task, payload);
 
       return ServicesResponse<R>.success(data);
     } catch (err, stackTrace) {
-      if (onErr == null) {
+      if (onError == null) {
         final ServicesError error = err is ServicesException
             ? err.toServicesError(
                 stackTrace,
@@ -118,7 +118,7 @@ abstract class ServicesWorker {
         return ServicesResponse<R>.error(error);
       }
 
-      return await onErr(
+      return await onError(
         err,
         stackTrace,
       );
