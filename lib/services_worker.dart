@@ -145,8 +145,10 @@ class ServicesResponse<R> {
         error: error,
       );
 
+  /// Returns true if data != null
   bool get hasData => data != null ? true : false;
 
+  /// Returns true if error != null
   bool get hasError => error != null ? true : false;
 
   @override
@@ -177,7 +179,7 @@ class ServicesError<E> {
     return err;
   }
 
-  ServicesError<E> addStackTrace(StackTrace newStackTrace) {
+  ServicesError<E> copyWithAdditionalStackTrace(StackTrace newStackTrace) {
     final List<StackTrace> newStackTraceList = [
       ...stackTrace,
       newStackTrace,
@@ -207,11 +209,20 @@ class ServicesException<E> extends ServicesError<E> implements Exception {
     super.data,
   });
 
+  factory ServicesException.fromServicesError(ServicesError<E> error) {
+    return ServicesException<E>(
+      message: error.message,
+      stackTrace: error.stackTrace,
+      data: error.data,
+    );
+  }
+
   ServicesError<E> toServicesError(
     StackTrace? newStackTrace,
   ) {
     if (newStackTrace != null) {
-      final ServicesError<E> err = super.addStackTrace(newStackTrace);
+      final ServicesError<E> err =
+          super.copyWithAdditionalStackTrace(newStackTrace);
 
       return err;
     }
