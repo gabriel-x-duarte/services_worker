@@ -1,6 +1,6 @@
 name: services_worker
 description: A minimalistic asynchronous worker that simplifies the boilerplate and execution of tasks.
-version: 1.0.1
+version: 1.0.2
 homepage: https://github.com/gabriel-x-duarte/services_worker
 
 environment:

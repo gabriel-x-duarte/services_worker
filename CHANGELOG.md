@@ -1,3 +1,3 @@
-## 1.0.1
+## 1.0.2
 
-Services Worker is a abstract class that assists with the execution of asynchronous tasks
+Services Worker is a abstract class that assists with the execution of asynchronous tasks.

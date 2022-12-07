@@ -126,6 +126,8 @@ abstract class ServicesWorker {
   }
 }
 
+/// This class has two constructors to ensure that it will either return
+/// an error, or the expected type of data informed.
 class ServicesResponse<R> {
   final R? data;
   final ServicesError? error;
@@ -160,6 +162,7 @@ class ServicesResponse<R> {
   }
 }
 
+/// Base Error class
 class ServicesError<E> {
   final String message;
   final List<StackTrace> stackTrace;
