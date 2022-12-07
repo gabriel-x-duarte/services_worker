@@ -29,22 +29,36 @@ abstract class ServicesWorker {
   /// );
   /// ```
   static Future<ServicesResponse<R>> execute<R>(
-    FutureOr<R> Function() task,
-  ) async {
+    FutureOr<R> Function() task, {
+    FutureOr<ServicesResponse<R>> Function(
+      Object err,
+      StackTrace stackTrace,
+    )?
+        onErr,
+  }) async {
     try {
       R data = await task();
 
       return ServicesResponse<R>.success(data);
-    } catch (e) {
-      final ServicesError error = e is ServicesException
-          ? e
-          : ServicesError(
-              e.toString(),
-              data: e,
-              type: e.runtimeType,
-            );
+    } catch (err, stackTrace) {
+      if (onErr == null) {
+        final ServicesError error = err is ServicesException
+            ? err.toServicesError(
+                stackTrace,
+              )
+            : ServicesError(
+                message: err.runtimeType.toString(),
+                stackTrace: [stackTrace],
+                data: err,
+              );
 
-      return ServicesResponse<R>.error(error);
+        return ServicesResponse<R>.error(error);
+      }
+
+      return await onErr(
+        err,
+        stackTrace,
+      );
     }
   }
 
@@ -54,7 +68,7 @@ abstract class ServicesWorker {
   /// will be inaccessible. In this case which nothing is returned,
   /// is recommended to use type Null instead of void.
   ///
-  /// Any functions called inside the passing function, must be static.
+  /// Any functions called inside the passing Function() task, must be static.
   /// Otherwise it will throw an exeception when executing the isolate.
   ///
   /// Example:
@@ -78,22 +92,36 @@ abstract class ServicesWorker {
   /// ```
   static Future<ServicesResponse<R>> executeInOtherThread<Q, R>(
     FutureOr<R> Function(Q) task,
-    Q payload,
-  ) async {
+    Q payload, {
+    FutureOr<ServicesResponse<R>> Function(
+      Object err,
+      StackTrace stackTrace,
+    )?
+        onErr,
+  }) async {
     try {
       final R data = await compute<Q, R>(task, payload);
 
       return ServicesResponse<R>.success(data);
-    } catch (e) {
-      final ServicesError error = e is ServicesException
-          ? e
-          : ServicesError(
-              e.toString(),
-              data: e,
-              type: e.runtimeType,
-            );
+    } catch (err, stackTrace) {
+      if (onErr == null) {
+        final ServicesError error = err is ServicesException
+            ? err.toServicesError(
+                stackTrace,
+              )
+            : ServicesError(
+                message: err.runtimeType.toString(),
+                stackTrace: [stackTrace],
+                data: err,
+              );
 
-      return ServicesResponse<R>.error(error);
+        return ServicesResponse<R>.error(error);
+      }
+
+      return await onErr(
+        err,
+        stackTrace,
+      );
     }
   }
 }
@@ -130,41 +158,73 @@ class ServicesResponse<R> {
   }
 }
 
-class ServicesError {
+class ServicesError<E> {
   final String message;
-  final Object? data;
-  final Type? type;
+  final List<StackTrace> stackTrace;
+  final E? data;
 
-  const ServicesError(
-    this.message, {
+  const ServicesError({
+    required this.message,
+    this.stackTrace = const [],
     this.data,
-    this.type,
   });
+
+  factory ServicesError.fromServicesException(
+    ServicesException<E> exception,
+  ) {
+    final ServicesError<E> err = exception;
+
+    return err;
+  }
+
+  ServicesError<E> addStackTrace(StackTrace newStackTrace) {
+    final List<StackTrace> newStackTraceList = [
+      ...stackTrace,
+      newStackTrace,
+    ];
+
+    return ServicesError<E>(
+      message: message,
+      stackTrace: newStackTraceList,
+      data: data,
+    );
+  }
 
   @override
   String toString() {
     return <String, String>{
       "message": message,
+      "stackTrace": stackTrace.toString(),
       "data": data.toString(),
-      "type": type.toString(),
     }.toString();
   }
 }
 
-class ServicesException extends ServicesError implements Exception {
-  const ServicesException(
-    super.message, {
+class ServicesException<E> extends ServicesError<E> implements Exception {
+  const ServicesException({
+    required super.message,
+    super.stackTrace,
     super.data,
-  }) : super(
-          type: ServicesException,
-        );
+  });
+
+  ServicesError<E> toServicesError(
+    StackTrace? newStackTrace,
+  ) {
+    if (newStackTrace != null) {
+      final ServicesError<E> err = super.addStackTrace(newStackTrace);
+
+      return err;
+    }
+
+    return this;
+  }
 
   @override
   String toString() {
     return <String, String>{
       "message": message,
+      "stackTrace": stackTrace.toString(),
       "data": data.toString(),
-      "type": type.toString(),
     }.toString();
   }
 }
