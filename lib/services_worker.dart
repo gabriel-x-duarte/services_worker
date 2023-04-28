@@ -44,11 +44,11 @@ abstract class ServicesWorker {
       if (onError == null) {
         final ServicesError error = err is ServicesException
             ? err.toServicesError(
-                stackTrace,
+                [stackTrace.toString()],
               )
             : ServicesError(
                 message: err.runtimeType.toString(),
-                stackTrace: [stackTrace],
+                logs: [stackTrace.toString()],
                 data: err,
               );
 
@@ -107,11 +107,11 @@ abstract class ServicesWorker {
       if (onError == null) {
         final ServicesError error = err is ServicesException
             ? err.toServicesError(
-                stackTrace,
+                [stackTrace.toString()],
               )
             : ServicesError(
                 message: err.runtimeType.toString(),
-                stackTrace: [stackTrace],
+                logs: [stackTrace.toString()],
                 data: err,
               );
 
@@ -165,12 +165,14 @@ class ServicesResponse<R> {
 /// Base Error class
 class ServicesError<E> {
   final String message;
-  final List<StackTrace> stackTrace;
+  final String code;
+  final List<String> logs;
   final E? data;
 
   const ServicesError({
     required this.message,
-    this.stackTrace = const [],
+    this.code = "",
+    this.logs = const [],
     this.data,
   });
 
@@ -182,15 +184,15 @@ class ServicesError<E> {
     return err;
   }
 
-  ServicesError<E> copyWithAdditionalStackTrace(StackTrace newStackTrace) {
-    final List<StackTrace> newStackTraceList = [
-      ...stackTrace,
-      newStackTrace,
+  ServicesError<E> copyWithAdditionalLogs(List<String> additionalLogs) {
+    final List<String> newLogList = [
+      ...logs,
+      ...additionalLogs,
     ];
 
     return ServicesError<E>(
       message: message,
-      stackTrace: newStackTraceList,
+      logs: newLogList,
       data: data,
     );
   }
@@ -199,7 +201,8 @@ class ServicesError<E> {
   String toString() {
     return <String, String>{
       "message": message,
-      "stackTrace": stackTrace.toString(),
+      "code": code,
+      "logs": logs.toString(),
       "data": data.toString(),
     }.toString();
   }
@@ -208,24 +211,27 @@ class ServicesError<E> {
 class ServicesException<E> extends ServicesError<E> implements Exception {
   const ServicesException({
     required super.message,
-    super.stackTrace,
+    super.code,
+    super.logs,
     super.data,
   });
 
   factory ServicesException.fromServicesError(ServicesError<E> error) {
     return ServicesException<E>(
       message: error.message,
-      stackTrace: error.stackTrace,
+      code: error.code,
+      logs: error.logs,
       data: error.data,
     );
   }
 
   ServicesError<E> toServicesError(
-    StackTrace? newStackTrace,
+    List<String>? additionalLogs,
   ) {
-    if (newStackTrace != null) {
-      final ServicesError<E> err =
-          super.copyWithAdditionalStackTrace(newStackTrace);
+    if (additionalLogs != null) {
+      final ServicesError<E> err = super.copyWithAdditionalLogs(
+        additionalLogs,
+      );
 
       return err;
     }
@@ -237,7 +243,8 @@ class ServicesException<E> extends ServicesError<E> implements Exception {
   String toString() {
     return <String, String>{
       "message": message,
-      "stackTrace": stackTrace.toString(),
+      "code": code,
+      "logs": logs.toString(),
       "data": data.toString(),
     }.toString();
   }
