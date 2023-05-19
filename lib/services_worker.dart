@@ -33,8 +33,7 @@ abstract class ServicesWorker {
     FutureOr<ServicesResponse<R>> Function(
       Object error,
       StackTrace stackTrace,
-    )?
-        onError,
+    )? onError,
   }) async {
     try {
       R data = await task();
@@ -96,8 +95,7 @@ abstract class ServicesWorker {
     FutureOr<ServicesResponse<R>> Function(
       Object error,
       StackTrace stackTrace,
-    )?
-        onError,
+    )? onError,
   }) async {
     try {
       final R data = await compute<Q, R>(task, payload);
