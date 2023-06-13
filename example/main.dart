@@ -73,26 +73,28 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future _execute() async {
-    final res = await ServicesWorker.executeInOtherThread(_hardTask, _data);
+    final res = await ServicesWorker.executeInOtherThread(
+      () => _hardTask(_data),
+    );
 
-    if (res.hasData) {
-      final double value = res.data!;
+    if (res.hasError) {
+      final error = res.error!;
 
-      setState(() {
-        _data = value;
-      });
-
-      return;
+      throw ServicesException.fromServicesError(
+        error,
+      );
     }
 
-    final error = res.error!;
+    final double value = res.data!;
 
-    throw ServicesException.fromServicesError(
-      error,
-    );
+    setState(() {
+      _data = value;
+    });
+
+    return;
   }
 
-  static double _hardTask(double oldValue) {
+  static Future<double> _hardTask(double oldValue) async {
     final double value = oldValue + 1;
 
     final double newValue = ((((value * value) / 2) * (-1 * value)) / 0.777);

@@ -1,11 +1,11 @@
 name: services_worker
 description: A minimalistic asynchronous worker that simplifies the boilerplate and execution of tasks.
-version: 1.0.4
+version: 1.0.5
 homepage: https://github.com/gabriel-x-duarte/services_worker
 
 environment:
-  sdk: '>=2.18.1 <4.0.0'
-  flutter: ">=3.3.0"
+  sdk: '>=2.19.1 <4.0.0'
+  flutter: ">=3.7.0"
 
 dependencies:
   flutter:

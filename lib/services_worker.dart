@@ -1,8 +1,7 @@
 library services_worker;
 
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
+import 'dart:isolate';
 
 abstract class ServicesWorker {
   /// Executes a task in the main running thread.
@@ -72,33 +71,19 @@ abstract class ServicesWorker {
   ///
   /// Example:
   /// ```dart
-  /// ServicesWorker.executeInOtherThread<int, int>(
-  ///   (int n) {
-  ///     return n + n;
-  ///   },
-  ///   4,
-  /// );
-  ///
-  /// ServicesWorker.executeInOtherThread<int, Null>(
-  ///   (int n) async {
-  ///     await Future.delayed(const Duration(milliseconds: 1000));
-  ///
-  ///     doSomething(); // this function is static
-  ///     return;
-  ///   },
-  ///   4,
+  /// ServicesWorker.executeInOtherThread<int>(
+  ///   () => _hardTask(_data),
   /// );
   /// ```
-  static Future<ServicesResponse<R>> executeInOtherThread<Q, R>(
-    FutureOr<R> Function(Q) task,
-    Q payload, {
+  static Future<ServicesResponse<R>> executeInOtherThread<R>(
+    FutureOr<R> Function() task, {
     FutureOr<ServicesResponse<R>> Function(
       Object error,
       StackTrace stackTrace,
     )? onError,
   }) async {
     try {
-      final R data = await compute<Q, R>(task, payload);
+      final R data = await Isolate.run(task);
 
       return ServicesResponse<R>.success(data);
     } catch (err, stackTrace) {
