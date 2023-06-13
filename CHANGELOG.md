@@ -1,3 +1,6 @@
+## 1.0.6
+* Corrigindo erro no exemplo do file README.md
+
 ## 1.0.5
 * Update: stopped using compute() and now uses Isolate.run()
 

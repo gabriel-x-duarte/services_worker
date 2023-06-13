@@ -72,7 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future _execute() async {
+  Future<void> _execute() async {
     final res = await ServicesWorker.executeInOtherThread(
       () => _hardTask(_data),
     );
