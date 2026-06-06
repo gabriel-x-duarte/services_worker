@@ -1,6 +1,6 @@
 name: services_worker
 description: A lightweight Dart utility for safely running synchronous, asynchronous, and isolate-based tasks with structured responses.
-version: 2.0.0
+version: 2.0.1
 homepage: https://github.com/gabriel-x-duarte/services_worker
 repository: https://github.com/gabriel-x-duarte/services_worker
 issue_tracker: https://github.com/gabriel-x-duarte/services_worker/issues

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+* DOCS: improve README structure and readability
+* DOCS: reorganize README subsection hierarchy using level 4 headings
+
 ## 2.0.0
 * BREAKING: Removed Flutter dependency and converted the package into a pure Dart package.
 * BREAKING: Removed Flutter-specific package configuration from `pubspec.yaml`.

@@ -1,5 +1,3 @@
-# services_worker
-
 A lightweight Dart utility for safely running synchronous, asynchronous, and isolate-based tasks with structured responses.
 
 ## Features
@@ -13,21 +11,6 @@ A lightweight Dart utility for safely running synchronous, asynchronous, and iso
 * Injectable `ServicesWorker` instances.
 * Shared `servicesWorker` convenience instance.
 
-## Getting started
-
-Add `services_worker` to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  services_worker: ^2.0.0
-```
-
-Import the package:
-
-```dart
-import 'package:services_worker/services_worker.dart';
-```
-
 ## Usage
 
 The following examples assume:
@@ -36,7 +19,7 @@ The following examples assume:
 final worker = ServicesWorker();
 ```
 
-### Running tasks
+#### Running tasks
 
 ```dart
 final syncResponse = await worker.run<int>(
@@ -64,7 +47,7 @@ if (asyncResponse.isSuccess) {
 }
 ```
 
-### Running tasks in another isolate
+#### Running tasks in another isolate
 
 Use `runInIsolate` for CPU-heavy operations that should not block the current isolate.
 
@@ -90,7 +73,7 @@ int heavyCalculation() {
 
 ## Handling failures
 
-### Common exceptions
+#### Common exceptions
 
 ```dart
 final response = await worker.run<Null>(
@@ -108,7 +91,7 @@ if (response.hasFailure) {
 }
 ```
 
-### Structured exceptions
+#### Structured exceptions
 
 ```dart
 final response = await worker.run<Null>(
@@ -133,7 +116,7 @@ if (response.hasFailure) {
 }
 ```
 
-### Custom failure mapping
+#### Custom failure mapping
 
 ```dart
 final response = await worker.run<int>(
@@ -260,11 +243,11 @@ Avoid passing closures that capture:
 
 Version 2.0.0 introduces breaking changes.
 
-### Flutter dependency removed
+#### Flutter dependency removed
 
 The package is now a pure Dart package.
 
-### `ServicesWorker` is now instantiable
+#### `ServicesWorker` is now instantiable
 
 Before:
 
@@ -284,7 +267,7 @@ final response = await worker.run<int>(
 );
 ```
 
-### `executeInOtherThread` was replaced by `runInIsolate`
+#### `executeInOtherThread` was replaced by `runInIsolate`
 
 Before:
 
@@ -304,7 +287,7 @@ final response = await worker.runInIsolate<int>(
 );
 ```
 
-### `ServicesError` was renamed to `ServicesFailure`
+#### `ServicesError` was renamed to `ServicesFailure`
 
 Before:
 
@@ -318,7 +301,7 @@ After:
 final failure = response.failure;
 ```
 
-### `hasError` was renamed to `hasFailure`
+#### `hasError` was renamed to `hasFailure`
 
 Before:
 
