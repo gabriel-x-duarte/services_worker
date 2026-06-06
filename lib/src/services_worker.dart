@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'services_error.dart';
 import 'services_exception.dart';
+import 'services_failure.dart';
 import 'services_response.dart';
 
 /// A lightweight worker responsible for safely running tasks.
@@ -12,7 +12,8 @@ import 'services_response.dart';
 /// failures into [ServicesResponse] objects.
 ///
 /// This class is intentionally instantiable so it can be injected
-/// into services, repositories, use cases, interactors, or controllers.
+/// into services, repositories, use cases, interactors, controllers,
+/// or any other application layer component.
 final class ServicesWorker {
   /// Creates a new [ServicesWorker] instance.
   const ServicesWorker();
@@ -24,9 +25,34 @@ final class ServicesWorker {
   /// If the task completes successfully, this method returns
   /// [ServicesResponse.success].
   ///
-  /// If the task throws, this method returns [ServicesResponse.error].
+  /// If the task throws, this method returns [ServicesResponse.failure].
   ///
-  /// The optional [onError] callback allows custom error mapping.
+  /// If no data is returned by the task, use `Null` instead of `void`
+  /// as the generic type parameter.
+  ///
+  /// Using `void` makes `response.data` inaccessible and unsafe to
+  /// consume, because `void` tells Dart that the returned value should
+  /// not be used.
+  ///
+  /// Using `Null` keeps `response.data` accessible and explicitly
+  /// represents the absence of data.
+  ///
+  /// Example:
+  ///
+  /// ```dart
+  /// final response = await worker.run<Null>(
+  ///   () {
+  ///     performSideEffect();
+  ///
+  ///     return null;
+  ///   },
+  /// );
+  /// ```
+  ///
+  /// The optional [onError] callback allows custom failure mapping.
+  /// This is useful when the application needs to convert exceptions,
+  /// infrastructure errors, or domain-specific problems into its own
+  /// response format.
   ///
   /// Example:
   ///
@@ -56,8 +82,8 @@ final class ServicesWorker {
         return onError(error, stackTrace);
       }
 
-      return ServicesResponse<R>.error(
-        _mapError(
+      return ServicesResponse<R>.failure(
+        _mapFailure(
           error,
           stackTrace,
         ),
@@ -78,9 +104,27 @@ final class ServicesWorker {
   /// If the task completes successfully, this method returns
   /// [ServicesResponse.success].
   ///
-  /// If the task throws, this method returns [ServicesResponse.error].
+  /// If the task throws, this method returns [ServicesResponse.failure].
   ///
-  /// The optional [onError] callback allows custom error mapping.
+  /// If no data is returned by the task, use `Null` instead of `void`
+  /// as the generic type parameter.
+  ///
+  /// Using `void` makes `response.data` inaccessible and unsafe to
+  /// consume, because `void` tells Dart that the returned value should
+  /// not be used.
+  ///
+  /// Using `Null` keeps `response.data` accessible and explicitly
+  /// represents the absence of data.
+  ///
+  /// Example:
+  ///
+  /// ```dart
+  /// final response = await worker.runInIsolate<Null>(
+  ///   performSideEffectInIsolate,
+  /// );
+  /// ```
+  ///
+  /// The optional [onError] callback allows custom failure mapping.
   ///
   /// Example:
   ///
@@ -111,8 +155,8 @@ final class ServicesWorker {
         return onError(error, stackTrace);
       }
 
-      return ServicesResponse<R>.error(
-        _mapError(
+      return ServicesResponse<R>.failure(
+        _mapFailure(
           error,
           stackTrace,
         ),
@@ -120,24 +164,26 @@ final class ServicesWorker {
     }
   }
 
-  ServicesFailure<Object> _mapError(
+  ServicesFailure _mapFailure(
     Object error,
     StackTrace stackTrace,
   ) {
-    if (error is ServicesException<Object>) {
-      return error.toServicesError(
-        additionalLogs: <String>[
-          stackTrace.toString(),
-        ],
+    if (error is ServicesException) {
+      final ServicesFailure failure = error.toServicesFailure();
+
+      if (failure.stackTrace != null) {
+        return failure;
+      }
+
+      return failure.copyWith(
+        stackTrace: stackTrace,
       );
     }
 
-    return ServicesFailure<Object>(
+    return ServicesFailure(
       message: error.toString(),
-      logs: <String>[
-        stackTrace.toString(),
-      ],
-      data: error,
+      error: error,
+      stackTrace: stackTrace,
     );
   }
 }

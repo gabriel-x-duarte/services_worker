@@ -1,131 +1,341 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# services_worker
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages). 
+A lightweight Dart utility for safely running synchronous, asynchronous, and isolate-based tasks with structured responses.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages). 
--->
-
-A minimalistic asynchronous worker.
 ## Features
 
-This package simplifies the boilerplate and execution of asynchronous tasks
+* Run synchronous and asynchronous tasks safely.
+* Run CPU-heavy tasks in another isolate.
+* Convert thrown errors into structured failures.
+* Preserve original error objects and stack traces.
+* Support custom failure mapping.
+* Pure Dart package with no Flutter dependency.
+* Injectable `ServicesWorker` instances.
+* Shared `servicesWorker` convenience instance.
+
+## Getting started
+
+Add `services_worker` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  services_worker: ^2.0.0
+```
+
+Import the package:
+
+```dart
+import 'package:services_worker/services_worker.dart';
+```
 
 ## Usage
 
+The following examples assume:
+
 ```dart
-import 'package:flutter/material.dart';
+final worker = ServicesWorker();
+```
 
-import 'package:services_worker/services_worker.dart';
+### Running tasks
 
-void main() {
-  runApp(const MyApp());
-}
+```dart
+final syncResponse = await worker.run<int>(
+  () {
+    return 8 + 8;
+  },
+);
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Test',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  double _data = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(
-                  height: 15,
-                ),
-                const Text(
-                  'This is the result of your task',
-                ),
-                const SizedBox(
-                  height: 25,
-                ),
-                Text(
-                  _data.toString(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _execute,
-        tooltip: 'execute',
-        child: const Icon(Icons.download),
-      ),
-    );
-  }
-
-  Future<void> _execute() async {
-    final res = await ServicesWorker.executeInOtherThread(
-      () => _hardTask(_data),
+final asyncResponse = await worker.run<String>(
+  () async {
+    await Future<void>.delayed(
+      const Duration(milliseconds: 300),
     );
 
-    if (res.hasError) {
-      final error = res.error!;
+    return 'Task completed';
+  },
+);
 
-      throw ServicesException.fromServicesError(
-        error,
-      );
-    }
-
-    final double value = res.data!;
-
-    setState(() {
-      _data = value;
-    });
-
-    return;
-  }
-
-  static Future<double> _hardTask(double oldValue) async {
-    final double value = oldValue + 1;
-
-    final double newValue = ((((value * value) / 2) * (-1 * value)) / 0.777);
-
-    return newValue;
-  }
+if (syncResponse.isSuccess) {
+  print(syncResponse.data);
 }
 
+if (asyncResponse.isSuccess) {
+  print(asyncResponse.data);
+}
+```
+
+### Running tasks in another isolate
+
+Use `runInIsolate` for CPU-heavy operations that should not block the current isolate.
+
+```dart
+final response = await worker.runInIsolate<int>(
+  heavyCalculation,
+);
+
+if (response.isSuccess) {
+  print(response.data);
+}
+
+int heavyCalculation() {
+  int total = 0;
+
+  for (int i = 0; i < 1000000; i++) {
+    total += i;
+  }
+
+  return total;
+}
+```
+
+## Handling failures
+
+### Common exceptions
+
+```dart
+final response = await worker.run<Null>(
+  () {
+    throw Exception('Unexpected error');
+  },
+);
+
+if (response.hasFailure) {
+  final failure = response.failure!;
+
+  print(failure.message);
+  print(failure.error);
+  print(failure.stackTrace);
+}
+```
+
+### Structured exceptions
+
+```dart
+final response = await worker.run<Null>(
+  () {
+    throw const ServicesException(
+      message: 'Invalid credentials',
+      code: 'AUTH_INVALID_CREDENTIALS',
+      logs: <String>[
+        'Authentication module',
+        'Login use case',
+      ],
+    );
+  },
+);
+
+if (response.hasFailure) {
+  final failure = response.failure!;
+
+  print(failure.message);
+  print(failure.code);
+  print(failure.logs);
+}
+```
+
+### Custom failure mapping
+
+```dart
+final response = await worker.run<int>(
+  () {
+    throw Exception('Database unavailable');
+  },
+  onError: (
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    return ServicesResponse<int>.failure(
+      ServicesFailure(
+        message: 'Custom database failure',
+        code: 'DATABASE_ERROR',
+        logs: <String>[
+          'Custom error mapper',
+        ],
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
+  },
+);
+
+if (response.hasFailure) {
+  print(response.failure!.message);
+}
+```
+
+## Using `Null` instead of `void`
+
+If no data is returned by the task, use `Null` instead of `void` as the generic type parameter.
+
+Using `void` makes `response.data` inaccessible and unsafe to consume, because `void` tells Dart that the returned value should not be used.
+
+Using `Null` keeps `response.data` accessible and explicitly represents the absence of data.
+
+```dart
+final response = await worker.run<Null>(
+  () {
+    print('Side effect completed');
+
+    return null;
+  },
+);
+
+print(response.isSuccess);
+print(response.hasData);
+print(response.data);
+```
+
+## Using the shared instance
+
+If you do not need dependency injection, you can use the shared `servicesWorker` instance.
+
+```dart
+final response = await servicesWorker.run<String>(
+  () {
+    return 'Done';
+  },
+);
+
+print(response.data);
+```
+
+## Response model
+
+A `ServicesResponse<T>` represents either a successful execution or a failure.
+
+```dart
+if (response.isSuccess) {
+  print(response.data);
+}
+
+if (response.hasFailure) {
+  print(response.failure);
+}
+```
+
+Important distinction:
+
+* `isSuccess` tells whether the task completed successfully.
+* `hasFailure` tells whether a failure exists.
+* `hasData` tells whether the response contains non-null data.
+
+A response can be successful and still have `hasData == false` when the returned value is `null`.
+
+## Failure model
+
+A `ServicesFailure` contains structured information about a failed task.
+
+```dart
+final failure = response.failure;
+
+print(failure?.message);
+print(failure?.code);
+print(failure?.logs);
+print(failure?.error);
+print(failure?.stackTrace);
+```
+
+`logs` should be used for additional contextual information. The original stack trace is stored separately in `stackTrace`.
+
+## Isolate limitations
+
+`runInIsolate` uses Dart isolates.
+
+The task passed to `runInIsolate` must be compatible with Dart isolate restrictions.
+
+Prefer:
+
+* Top-level functions
+* Static functions
+* Closures that only capture sendable values
+
+Avoid passing closures that capture:
+
+* Controllers
+* Open connections
+* Platform objects
+* Complex non-sendable objects
+
+## Migration from 1.x to 2.0.0
+
+Version 2.0.0 introduces breaking changes.
+
+### Flutter dependency removed
+
+The package is now a pure Dart package.
+
+### `ServicesWorker` is now instantiable
+
+Before:
+
+```dart
+final response = await ServicesWorker.execute<int>(
+  () => 8 + 8,
+);
+```
+
+After:
+
+```dart
+final worker = ServicesWorker();
+
+final response = await worker.run<int>(
+  () => 8 + 8,
+);
+```
+
+### `executeInOtherThread` was replaced by `runInIsolate`
+
+Before:
+
+```dart
+final response = await ServicesWorker.executeInOtherThread<int>(
+  calculate,
+);
+```
+
+After:
+
+```dart
+final worker = ServicesWorker();
+
+final response = await worker.runInIsolate<int>(
+  calculate,
+);
+```
+
+### `ServicesError` was renamed to `ServicesFailure`
+
+Before:
+
+```dart
+final error = response.error;
+```
+
+After:
+
+```dart
+final failure = response.failure;
+```
+
+### `hasError` was renamed to `hasFailure`
+
+Before:
+
+```dart
+if (response.hasError) {
+  print(response.error);
+}
+```
+
+After:
+
+```dart
+if (response.hasFailure) {
+  print(response.failure);
+}
 ```
 
 ## Additional information
 
-If you like this package and find it usefull, please give it a like.
+If you like this package and find it useful, please give it a like on pub.dev.

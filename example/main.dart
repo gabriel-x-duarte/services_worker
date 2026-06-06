@@ -1,104 +1,177 @@
-import 'package:flutter/material.dart';
+// ignore_for_file: avoid_print
 
 import 'package:services_worker/services_worker.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+Future<void> main() async {
+  const ServicesWorker worker = ServicesWorker();
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  // =========================================================
+  // 1. Synchronous task
+  // =========================================================
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Test',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
+  final ServicesResponse<int> syncResponse = await worker.run<int>(
+    () {
+      return 8 + 8;
+    },
+  );
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  double _data = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(
-                  height: 15,
-                ),
-                const Text(
-                  'This is the result of your task',
-                ),
-                const SizedBox(
-                  height: 25,
-                ),
-                Text(
-                  _data.toString(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _execute,
-        tooltip: 'execute',
-        child: const Icon(Icons.download),
-      ),
+  if (syncResponse.isSuccess) {
+    print(
+      'Synchronous result: ${syncResponse.data}',
     );
   }
 
-  Future<void> _execute() async {
-    final res = await ServicesWorker.executeInOtherThread(
-      () => _hardTask(_data),
-    );
+  // =========================================================
+  // 2. Asynchronous task
+  // =========================================================
 
-    if (res.hasError) {
-      final error = res.error!;
-
-      throw ServicesException.fromServicesError(
-        error,
+  final ServicesResponse<String> asyncResponse = await worker.run<String>(
+    () async {
+      await Future<void>.delayed(
+        const Duration(milliseconds: 500),
       );
-    }
 
-    final double value = res.data!;
+      return 'Async task completed';
+    },
+  );
 
-    setState(() {
-      _data = value;
-    });
-
-    return;
+  if (asyncResponse.isSuccess) {
+    print(
+      'Asynchronous result: ${asyncResponse.data}',
+    );
   }
 
-  static Future<double> _hardTask(double oldValue) async {
-    final double value = oldValue + 1;
+  // =========================================================
+  // 3. Nullable successful result
+  // =========================================================
 
-    final double newValue = ((((value * value) / 2) * (-1 * value)) / 0.777);
+  final ServicesResponse<String?> nullableResponse = await worker.run<String?>(
+    () {
+      return null;
+    },
+  );
 
-    return newValue;
+  print(
+    'Nullable success: ${nullableResponse.isSuccess}',
+  );
+
+  print(
+    'Nullable hasData: ${nullableResponse.hasData}',
+  );
+
+  // =========================================================
+  // 4. Common exception handling
+  // =========================================================
+
+  final ServicesResponse<void> commonErrorResponse = await worker.run<void>(
+    () {
+      throw Exception('Unexpected error');
+    },
+  );
+
+  if (commonErrorResponse.hasFailure) {
+    print(
+      'Common failure message: '
+      '${commonErrorResponse.failure?.message}',
+    );
+
+    print(
+      'Common failure stackTrace: '
+      '${commonErrorResponse.failure?.stackTrace}',
+    );
   }
+
+  // =========================================================
+  // 5. Structured failure handling
+  // =========================================================
+
+  final ServicesResponse<void> structuredFailureResponse =
+      await worker.run<void>(
+    () {
+      throw const ServicesException(
+        message: 'Invalid credentials',
+        code: 'AUTH_INVALID_CREDENTIALS',
+        logs: <String>[
+          'Authentication module',
+          'Login use case',
+        ],
+      );
+    },
+  );
+
+  if (structuredFailureResponse.hasFailure) {
+    final ServicesFailure? failure = structuredFailureResponse.failure;
+
+    print(
+      'Structured failure message: '
+      '${failure?.message}',
+    );
+
+    print(
+      'Structured failure code: '
+      '${failure?.code}',
+    );
+
+    print(
+      'Structured failure logs: '
+      '${failure?.logs}',
+    );
+  }
+
+  // =========================================================
+  // 6. Custom failure mapping
+  // =========================================================
+
+  final ServicesResponse<void> customFailureResponse = await worker.run<void>(
+    () {
+      throw Exception('Database unavailable');
+    },
+    onError: (
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      return ServicesResponse<void>.failure(
+        ServicesFailure(
+          message: 'Custom database failure',
+          code: 'DATABASE_ERROR',
+          logs: <String>[
+            'Custom error mapper',
+          ],
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+    },
+  );
+
+  if (customFailureResponse.hasFailure) {
+    print(
+      'Custom failure: '
+      '${customFailureResponse.failure?.message}',
+    );
+  }
+
+  // =========================================================
+  // 7. Isolate execution
+  // =========================================================
+
+  final ServicesResponse<int> isolateResponse = await worker.runInIsolate<int>(
+    heavyCalculation,
+  );
+
+  if (isolateResponse.isSuccess) {
+    print(
+      'Isolate result: ${isolateResponse.data}',
+    );
+  }
+}
+
+int heavyCalculation() {
+  int total = 0;
+
+  for (int i = 0; i < 1000000; i++) {
+    total += i;
+  }
+
+  return total;
 }

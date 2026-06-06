@@ -1,43 +1,54 @@
-import 'services_error.dart';
+import 'services_failure.dart';
 
 /// A custom exception that can be thrown inside a task executed by
 /// [ServicesWorker].
 ///
-/// When a [ServicesException] is thrown, [ServicesWorker] preserves
-/// its structured information and converts it into a [ServicesError].
-final class ServicesException<E> extends ServicesFailure<E>
-    implements Exception {
+/// Because [ServicesException] extends [ServicesFailure], it carries
+/// the same structured information as a returned failure while also
+/// being throwable as an [Exception].
+///
+/// This is useful when application code wants to throw a structured
+/// failure and still allow [ServicesWorker] to convert it back into
+/// a [ServicesFailure] response.
+final class ServicesException extends ServicesFailure implements Exception {
   /// Creates a [ServicesException].
   const ServicesException({
     required super.message,
     super.code,
     super.logs,
-    super.data,
+    super.error,
+    super.stackTrace,
   });
 
-  /// Creates a [ServicesException] from a [ServicesError].
-  factory ServicesException.fromServicesError(
-    ServicesFailure<E> error,
+  /// Creates a [ServicesException] from a [ServicesFailure].
+  factory ServicesException.fromServicesFailure(
+    ServicesFailure failure,
   ) {
-    return ServicesException<E>(
-      message: error.message,
-      code: error.code,
-      logs: error.logs,
-      data: error.data,
+    return ServicesException(
+      message: failure.message,
+      code: failure.code,
+      logs: failure.logs,
+      error: failure.error,
+      stackTrace: failure.stackTrace,
     );
   }
 
-  /// Converts this exception into a [ServicesError].
+  /// Converts this exception into a [ServicesFailure].
   ///
-  /// If [additionalLogs] is provided, the returned error will include
-  /// both the current logs and the additional logs.
-  ServicesFailure<E> toServicesError({
-    List<String>? additionalLogs,
-  }) {
-    if (additionalLogs == null) {
-      return this;
-    }
-
-    return copyWithAdditionalLogs(additionalLogs);
+  /// This method preserves the structured information stored in this
+  /// exception.
+  ///
+  /// It does not receive or override external execution context.
+  /// Any additional mapping, such as attaching a caught stack trace when
+  /// this exception does not already contain one, should be handled by
+  /// the caller.
+  ServicesFailure toServicesFailure() {
+    return ServicesFailure(
+      message: message,
+      code: code,
+      logs: logs,
+      error: error ?? this,
+      stackTrace: stackTrace,
+    );
   }
 }
