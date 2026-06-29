@@ -1,4 +1,6 @@
-# Changelog
+## 2.0.2
+
+* CHORE: align SDK constraints with Dart 3 and Flutter 3.10 compatibility
 
 ## 2.0.1
 * DOCS: improve README structure and readability
